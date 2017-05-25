@@ -1,6 +1,8 @@
 #ifndef _LASER_ODOMETRY_CORE_LASER_ODOMETRY_BASE_H_
 #define _LASER_ODOMETRY_CORE_LASER_ODOMETRY_BASE_H_
 
+#include <laser_odometry_core/conversion.h>
+
 // The input ROS messages supported
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -8,7 +10,6 @@
 // The output ROS messages supported
 #include <geometry_msgs/Pose2D.h>
 #include <nav_msgs/Odometry.h>
-//#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 // More ROS header
 #include <tf/tf.h>
@@ -493,9 +494,86 @@ namespace laser_odometry
     tf::quaternionTFToMsg(fixed_origin_to_base_.getRotation(),
                           msg_ptr->pose.pose.orientation);
 
+    msg_ptr->twist.twist = deltaPoseToTwist(correction_);
+
+//    tf::Transform correction = twistToDeltaPose(msg_ptr->twist.twist);
+//    correction.getOrigin();
+
     //msg_ptr->pose.covariance  = pose_covariance_;
     msg_ptr->twist.covariance = twist_covariance_;
   }
+
+//  /// @brief Transform a pose increment to twist.
+//  /// Correspond to a log(SE3).
+//  nav_msgs::Odometry::_twist_type toTwist(const tf::Transform& delta_pose)
+//  {
+//    nav_msgs::Odometry::_twist_type twist;
+
+//    double squared_n = delta_pose.getRotation().getX()*delta_pose.getRotation().getX() +
+//                       delta_pose.getRotation().getY()*delta_pose.getRotation().getY() +
+//                       delta_pose.getRotation().getZ()*delta_pose.getRotation().getZ(); // .unit_quaternion().vec().squaredNorm();
+
+//    double n = std::sqrt(squared_n);
+//    double w = delta_pose.getRotation().getW();
+
+//    double two_atan_nbyw_by_n;
+
+//    // Atan-based log thanks to
+//    //
+//    // C. Hertzberg et al.:
+//    // "Integrating Generic Sensor Fusion Algorithms with Sound State
+//    // Representation through Encapsulation of Manifolds"
+//    // Information Fusion, 2011
+
+//    if (n < 1e-10)
+//    {
+//      // If quaternion is normalized and n=0, then w should be 1;
+//      // w=0 should never happen here!
+//      assert(std::abs(w) >= 1e-10 && "Quaternion should be normalized!");
+
+//      double squared_w = w * w;
+//      two_atan_nbyw_by_n =
+//          double(2) / w - double(2) * (squared_n) / (w * squared_w);
+//    }
+//    else
+//    {
+//      if (std::abs(w) < 1e-10)
+//      {
+//        if (w > double(0))
+//          two_atan_nbyw_by_n = +M_PI / n;
+//        else
+//          two_atan_nbyw_by_n = -M_PI / n;
+//      }
+//      else
+//        two_atan_nbyw_by_n = double(2) * std::atan(n / w) / n;
+//    }
+
+//    double theta = two_atan_nbyw_by_n * n;
+
+//    tf::Vector3 upsilon_omega(two_atan_nbyw_by_n * delta_pose.getRotation().getX(),
+//                              two_atan_nbyw_by_n * delta_pose.getRotation().getY(),
+//                              two_atan_nbyw_by_n * delta_pose.getRotation().getZ());
+
+//    if (std::abs(theta) < 1e-10) {
+//          Matrix3<Scalar> const Omega =
+//              SO3<Scalar>::hat(upsilon_omega.template tail<3>());
+//          Matrix3<Scalar> const V_inv = Matrix3<Scalar>::Identity() -
+//                                        Scalar(0.5) * Omega +
+//                                        Scalar(1. / 12.) * (Omega * Omega);
+
+//          upsilon_omega.template head<3>() = V_inv * se3.translation();
+//        } else {
+//          Matrix3<Scalar> const Omega =
+//              SO3<Scalar>::hat(upsilon_omega.template tail<3>());
+//          Matrix3<Scalar> const V_inv =
+//              (Matrix3<Scalar>::Identity() - Scalar(0.5) * Omega +
+//               (Scalar(1) - theta / (Scalar(2) * tan(theta / Scalar(2)))) /
+//                   (theta * theta) * (Omega * Omega));
+//          upsilon_omega.template head<3>() = V_inv * se3.translation();
+//        }
+//        return upsilon_omega;
+
+//  }
 
 } /* namespace laser_odometry */
 

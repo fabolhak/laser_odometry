@@ -23,15 +23,20 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   tf
+  tf_conversions
 )
+
+find_package(cmake_modules REQUIRED)
+find_package(Sophus REQUIRED)
 
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp tf sensor_msgs pluginlib
+  CATKIN_DEPENDS geometry_msgs nav_msgs pluginlib roscpp sensor_msgs tf tf_conversions
+  DEPENDS Sophus
 )
 
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${Sophus_INCLUDE_DIRS})
 
 ###############
 ##   Build   ##
@@ -62,17 +67,13 @@ install(DIRECTORY include/${PROJECT_NAME}/
 ##    Test    ##
 ################
 
-#if(CATKIN_ENABLE_TESTING)
-#    find_package(rostest REQUIRED)
+if(CATKIN_ENABLE_TESTING)
+    find_package(rostest REQUIRED)
 #    find_package(catkin REQUIRED COMPONENTS
 #        roslib
 #    )
 
-#    add_rostest_gtest(test_carmen_reader_test
-#      test/test_carmen_reader.test
-#      test/test_carmen_reader.cpp
-#    )
+  # Add gtest
+  add_subdirectory(test)
 
-#  target_link_libraries(test_carmen_reader_test ${catkin_LIBRARIES} ${PROJECT_NAME})
-
-#endif()
+endif()
