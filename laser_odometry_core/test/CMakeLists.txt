@@ -1,0 +1,2 @@
+catkin_add_gtest(gtest_twist_conversion gtest_twist_conversion.cpp)
+target_link_libraries(gtest_twist_conversion gtest ${catkin_LIBRARIES})

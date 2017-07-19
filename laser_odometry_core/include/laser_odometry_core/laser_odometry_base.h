@@ -1,6 +1,8 @@
 #ifndef _LASER_ODOMETRY_CORE_LASER_ODOMETRY_BASE_H_
 #define _LASER_ODOMETRY_CORE_LASER_ODOMETRY_BASE_H_
 
+#include <laser_odometry_core/conversion.h>
+
 // The input ROS messages supported
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -8,7 +10,6 @@
 // The output ROS messages supported
 #include <geometry_msgs/Pose2D.h>
 #include <nav_msgs/Odometry.h>
-//#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 // More ROS header
 #include <tf/tf.h>
@@ -80,9 +81,8 @@ namespace laser_odometry
   {
   public:
 
-    /// @brief The covariance message type.
-    /// @see geometry_msgs::PoseWithCovariance::_covariance_type.
-    using covariance_msg_t = geometry_msgs::PoseWithCovariance::_covariance_type;
+    /// @brief The covariance type.
+    using covariance_t = Eigen::Matrix<double, 6, 6>;
 
     /// @brief A brief report of the matching.
     struct ProcessReport;
@@ -319,8 +319,9 @@ namespace laser_odometry
     bool initialized_  = false; /*!< @brief Whether the matcher is initialized. */
     bool has_new_kf_   = false; /*!< @brief Whether the matcher has a new referent reading. */
 
-    covariance_msg_t pose_covariance_;  /*!< @brief The estimated pose covariance. */
-    covariance_msg_t increment_covariance_; /*!< @brief The estimated pose increment covariance. */
+    covariance_t pose_covariance_;  /*!< @brief The estimated pose covariance. */
+    covariance_t increment_covariance_; /*!< @brief The estimated pose increment covariance in the laser_frame. */
+    covariance_t relative_tf_covariance_; /*!< @brief The estimated pose increment covariance in the base_frame. */
 
     ros::NodeHandle private_nh_ = ros::NodeHandle("~");
 
@@ -462,6 +463,12 @@ namespace laser_odometry
     virtual void isNotKeyFrame();
 
     /**
+     * @brief Rotate the estimated covariance of the increment in the
+     * sensor frame to the base frame.
+     */
+    void covLaserToCovBase();
+
+    /**
      * @brief Fills the published message with the estimated pose increment.
      */
     template <typename T>
@@ -503,6 +510,11 @@ namespace laser_odometry
     tf::quaternionTFToMsg(fixed_origin_to_base_.getRotation(),
                           msg_ptr->pose.pose.orientation);
 
+//    msg_ptr->twist.twist = deltaPoseToTwist(increment_);
+
+//    tf::Transform correction = twistToDeltaPose(msg_ptr->twist.twist);
+//    correction.getOrigin();
+
     //msg_ptr->pose.covariance  = pose_covariance_;
     //msg_ptr->twist.covariance = pose_twist_covariance_;
   }
@@ -512,9 +524,9 @@ namespace laser_odometry
   {
     if (msg_ptr == nullptr) return;
 
-    msg_ptr->x = increment_.getOrigin().getX();
-    msg_ptr->y = increment_.getOrigin().getY();
-    msg_ptr->theta = tf::getYaw(increment_.getRotation());
+    msg_ptr->x = relative_tf_.getOrigin().getX();
+    msg_ptr->y = relative_tf_.getOrigin().getY();
+    msg_ptr->theta = tf::getYaw(relative_tf_.getRotation());
   }
 
   template <>
@@ -526,16 +538,92 @@ namespace laser_odometry
     msg_ptr->header.frame_id = "last_key_frame"; /// @todo this frame does not exist. Should it?
     msg_ptr->child_frame_id  = base_frame_;
 
-    msg_ptr->pose.pose.position.x = increment_.getOrigin().getX();
-    msg_ptr->pose.pose.position.y = increment_.getOrigin().getY();
-    msg_ptr->pose.pose.position.z = increment_.getOrigin().getZ();
+    msg_ptr->pose.pose.position.x = relative_tf_.getOrigin().getX();
+    msg_ptr->pose.pose.position.y = relative_tf_.getOrigin().getY();
+    msg_ptr->pose.pose.position.z = relative_tf_.getOrigin().getZ();
 
-    tf::quaternionTFToMsg(increment_.getRotation(),
+    tf::quaternionTFToMsg(relative_tf_.getRotation(),
                           msg_ptr->pose.pose.orientation);
 
-    msg_ptr->pose.covariance  = increment_covariance_;
-    //msg_ptr->twist.covariance = increment_twist_covariance_;
+    toRos(relative_tf_covariance_, msg_ptr->pose.covariance);
+
+    msg_ptr->twist.twist = deltaPoseToTwist(relative_tf_);
+
+    /// @todo twist covariance
+    toRos(relative_tf_covariance_, msg_ptr->twist.covariance);
   }
+
+//  /// @brief Transform a pose increment to twist.
+//  /// Correspond to a log(SE3).
+//  nav_msgs::Odometry::_twist_type toTwist(const tf::Transform& delta_pose)
+//  {
+//    nav_msgs::Odometry::_twist_type twist;
+
+//    double squared_n = delta_pose.getRotation().getX()*delta_pose.getRotation().getX() +
+//                       delta_pose.getRotation().getY()*delta_pose.getRotation().getY() +
+//                       delta_pose.getRotation().getZ()*delta_pose.getRotation().getZ(); // .unit_quaternion().vec().squaredNorm();
+
+//    double n = std::sqrt(squared_n);
+//    double w = delta_pose.getRotation().getW();
+
+//    double two_atan_nbyw_by_n;
+
+//    // Atan-based log thanks to
+//    //
+//    // C. Hertzberg et al.:
+//    // "Integrating Generic Sensor Fusion Algorithms with Sound State
+//    // Representation through Encapsulation of Manifolds"
+//    // Information Fusion, 2011
+
+//    if (n < 1e-10)
+//    {
+//      // If quaternion is normalized and n=0, then w should be 1;
+//      // w=0 should never happen here!
+//      assert(std::abs(w) >= 1e-10 && "Quaternion should be normalized!");
+
+//      double squared_w = w * w;
+//      two_atan_nbyw_by_n =
+//          double(2) / w - double(2) * (squared_n) / (w * squared_w);
+//    }
+//    else
+//    {
+//      if (std::abs(w) < 1e-10)
+//      {
+//        if (w > double(0))
+//          two_atan_nbyw_by_n = +M_PI / n;
+//        else
+//          two_atan_nbyw_by_n = -M_PI / n;
+//      }
+//      else
+//        two_atan_nbyw_by_n = double(2) * std::atan(n / w) / n;
+//    }
+
+//    double theta = two_atan_nbyw_by_n * n;
+
+//    tf::Vector3 upsilon_omega(two_atan_nbyw_by_n * delta_pose.getRotation().getX(),
+//                              two_atan_nbyw_by_n * delta_pose.getRotation().getY(),
+//                              two_atan_nbyw_by_n * delta_pose.getRotation().getZ());
+
+//    if (std::abs(theta) < 1e-10) {
+//          Matrix3<Scalar> const Omega =
+//              SO3<Scalar>::hat(upsilon_omega.template tail<3>());
+//          Matrix3<Scalar> const V_inv = Matrix3<Scalar>::Identity() -
+//                                        Scalar(0.5) * Omega +
+//                                        Scalar(1. / 12.) * (Omega * Omega);
+
+//          upsilon_omega.template head<3>() = V_inv * se3.translation();
+//        } else {
+//          Matrix3<Scalar> const Omega =
+//              SO3<Scalar>::hat(upsilon_omega.template tail<3>());
+//          Matrix3<Scalar> const V_inv =
+//              (Matrix3<Scalar>::Identity() - Scalar(0.5) * Omega +
+//               (Scalar(1) - theta / (Scalar(2) * tan(theta / Scalar(2)))) /
+//                   (theta * theta) * (Omega * Omega));
+//          upsilon_omega.template head<3>() = V_inv * se3.translation();
+//        }
+//        return upsilon_omega;
+
+//  }
 
 } /* namespace laser_odometry */
 

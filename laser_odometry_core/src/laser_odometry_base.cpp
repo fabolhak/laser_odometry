@@ -4,6 +4,9 @@
 
 #include <boost/assign/list_of.hpp>
 
+#include <Eigen/Core>
+#include <tf_conversions/tf_eigen.h>
+
 #define assert_not_null(x) \
   assert(x != nullptr);
 
@@ -23,22 +26,31 @@ bool LaserOdometryBase::configure()
   std::vector<double> default_covariance;
   private_nh_.param("covariance_diag", default_covariance, default_covariance);
 
-  if (default_covariance.size() != 6)
+  increment_covariance_ = covariance_t::Identity() * 1e-2;
+
+  if (default_covariance.size() == 3)
+  {
+    increment_covariance_(0,0) = default_covariance[0];
+    increment_covariance_(1,1) = default_covariance[1];
+    increment_covariance_(5,5) = default_covariance[2];
+  }
+  else if (default_covariance.size() == 6)
+  {
+    increment_covariance_(0,0) = default_covariance[0];
+    increment_covariance_(1,1) = default_covariance[1];
+    increment_covariance_(2,2) = default_covariance[2];
+    increment_covariance_(3,3) = default_covariance[3];
+    increment_covariance_(4,4) = default_covariance[4];
+    increment_covariance_(5,5) = default_covariance[5];
+  }
+  else
   {
     ROS_WARN_STREAM("Retrieved " << default_covariance.size()
-                    << " covariance coeff. Should be 6. Setting default.");
-
-    default_covariance.resize(6);
-    std::fill_n(default_covariance.begin(), 6, 1e-8);
+                    << " covariance coeff.\n"
+                    << "Should be 3 (xx, yy, tt)\n"
+                    << " or 6 (xx, yy, zz, r_xx, r_yy, r_zz).\n"
+                    << "Setting default Identity*1e-2");
   }
-
-  increment_covariance_ = boost::assign::list_of
-               (static_cast<double>(default_covariance[0]))  (0)  (0)  (0)  (0) (0)
-               (0)  (static_cast<double>(default_covariance[1]))  (0)  (0)  (0) (0)
-               (0)  (0)  (static_cast<double>(default_covariance[2]))  (0)  (0) (0)
-               (0)  (0)  (0)  (static_cast<double>(default_covariance[3]))  (0) (0)
-               (0)  (0)  (0)  (0)  (static_cast<double>(default_covariance[4])) (0)
-               (0)  (0)  (0)  (0)  (0)  (static_cast<double>(default_covariance[5]));
 
   // Configure derived class
   configured_ = configureImpl();
@@ -93,11 +105,17 @@ LaserOdometryBase::process(const sensor_msgs::LaserScanConstPtr& scan_msg,
     // the increment of the base's position, in the base frame
     relative_tf_ = base_to_laser_ * increment_ * laser_to_base_;
 
+    // the base's position increment covariance, in the base frame
+    covLaserToCovBase();
+
     // update the pose in the fixed frame
     fixed_to_base_ = fixed_to_base_kf_ * relative_tf_;
 
     // update the pose in the fixed 'origin' frame
     fixed_origin_to_base_ = fixed_origin_ * fixed_to_base_;
+
+    //utils::print(increment_);
+    //utils::print(relative_tf_);
   }
   else
   {
@@ -349,6 +367,23 @@ void LaserOdometryBase::getKeyFrame(sensor_msgs::LaserScanConstPtr& kframe) cons
 void LaserOdometryBase::getKeyFrame(sensor_msgs::PointCloud2ConstPtr& kframe) const noexcept
 {
   kframe = reference_cloud_;
+}
+
+void LaserOdometryBase::covLaserToCovBase()
+{
+  const tf::Matrix3x3& r = relative_tf_.getBasis();
+
+  Eigen::Matrix<double, 6, 6> R = Eigen::Matrix<double, 6, 6>::Identity();
+
+  R.topLeftCorner<3,3>() << r[0][0],r[0][1],r[0][2],
+                            r[1][0],r[1][1],r[1][2],
+                            r[2][0],r[2][1],r[2][2];
+
+  R.bottomRightCorner<3,3>() << r[0][0],r[0][1],r[0][2],
+                                r[1][0],r[1][1],r[1][2],
+                                r[2][0],r[2][1],r[2][2];
+
+  relative_tf_covariance_ = R * increment_covariance_ * R.transpose();
 }
 
 ////////////////////////
