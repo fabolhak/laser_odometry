@@ -7,7 +7,6 @@
 #include <tf_conversions/tf_eigen.h>
 
 #include <sophus/se3.hpp>
-#include <sophus/se2.hpp>
 
 #include <Eigen/Core>
 #include <geometry_msgs/PoseWithCovariance.h>
