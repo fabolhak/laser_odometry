@@ -128,6 +128,7 @@ LaserOdometryBase::process(const sensor_msgs::LaserScanConstPtr& scan_msg,
   fillIncrementMsg(pose_increment_msg);
 
   has_new_kf_ = isKeyFrame(relative_tf_);
+
   if (has_new_kf_)
   {
     // generate a keyframe
@@ -364,9 +365,23 @@ void LaserOdometryBase::getKeyFrame(sensor_msgs::LaserScanConstPtr& kframe) cons
   kframe = reference_scan_;
 }
 
+void LaserOdometryBase::setKeyFrame(const sensor_msgs::LaserScanConstPtr& kframe)
+{
+  /// @todo since we're setting the key-frame
+  /// we probably should reset some transforms
+  reference_scan_ = kframe;
+}
+
 void LaserOdometryBase::getKeyFrame(sensor_msgs::PointCloud2ConstPtr& kframe) const noexcept
 {
   kframe = reference_cloud_;
+}
+
+void LaserOdometryBase::setKeyFrame(const sensor_msgs::PointCloud2ConstPtr& kframe)
+{
+  /// @todo since we're setting the key-frame
+  /// we probably should reset some transforms
+  reference_cloud_ = kframe;
 }
 
 void LaserOdometryBase::covLaserToCovBase()
