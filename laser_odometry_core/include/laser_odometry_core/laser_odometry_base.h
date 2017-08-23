@@ -229,10 +229,16 @@ namespace laser_odometry
     const Transform& getOrigin() const;
 
     /**
-     * @brief Set the origin frame.
-     * @param[in] origin. The origin frame.
+     * @brief Set the origin transform.
+     * @param[in] origin. The origin transform.
      */
     void setOrigin(const Transform& origin);
+
+    /**
+     * @brief Set the origin transform covariance.
+     * @param[in] origin. The origin transform covariance.
+     */
+    void setOriginCovariance(const Covariance& origin_covariance);
 
     /**
      * @brief Const-reference to the increment prior in the base_frame
@@ -377,12 +383,6 @@ namespace laser_odometry
     /// @brief The default increment covariance diagonal.
     std::vector<Scalar> default_cov_diag_ = std::vector<Scalar>(6, default_cov_diag_val);
 
-    /// @brief The estimated pose covariance.
-    Covariance pose_covariance_;
-
-    /// @brief The estimated pose increment covariance.
-    Covariance increment_covariance_;
-
     ros::NodeHandle private_nh_ = ros::NodeHandle("~");
 
     std::string base_frame_       = "base_link";        /// @brief The robot base frame name.
@@ -435,6 +435,18 @@ namespace laser_odometry
     /// It is the integrated robot odometry.
     /// == fixed_origin_ * fixed_to_base_.
     Transform fixed_origin_to_base_ = Transform::Identity();
+
+    /// @brief The estimated pose covariance.
+    Covariance pose_covariance_;
+
+    /// @brief The estimated pose increment covariance.
+    Covariance increment_covariance_;
+
+    /// @brief The estimated pose increment covariance.
+    Covariance increment_covariance_in_base_;
+
+    /// @brief The fixed origin covariance.
+    Covariance fixed_origin_covariance_ = Covariance::Zero();
 
     /// @brief  The referent LaserScan.
     sensor_msgs::LaserScanConstPtr   reference_scan_;

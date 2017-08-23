@@ -81,7 +81,7 @@ void LaserOdometryBase::fillIncrementMsg<nav_msgs::OdometryPtr&>(nav_msgs::Odome
 
   conversion::toRos(increment_in_base_, msg_ptr->pose.pose);
 
-  conversion::toRos(increment_covariance_, msg_ptr->pose.covariance);
+  conversion::toRos(increment_covariance_in_base_, msg_ptr->pose.covariance);
 }
 
 template <>
@@ -90,7 +90,7 @@ void LaserOdometryBase::fillIncrementMsg<TransformWithCovariancePtr&>(TransformW
   if (msg_ptr == nullptr) return;
 
   msg_ptr->transform_  = increment_in_base_;
-  msg_ptr->covariance_ = increment_covariance_;
+  msg_ptr->covariance_ = increment_covariance_in_base_;
 }
 
 // Class functions definition
@@ -325,14 +325,14 @@ void LaserOdometryBase::posePlusIncrement(const bool processed)
     // the increment of the base's position, in the base frame
     increment_in_base_ = base_to_laser_ * increment_ * laser_to_base_;
 
-    /// @todo increment_covariance_ in laser frame.
+    /// @todo increment_covariance_in_base_
     /// Is it simply rotating the covariance ?
     Eigen::Matrix<Scalar, 6, 6> R = Eigen::Matrix<Scalar, 6, 6>::Identity();
     R.topLeftCorner<3,3>()     = base_to_laser_.rotation();
     R.bottomRightCorner<3,3>() = laser_to_base_.rotation();
 
     /// @todo if no set by plugin, default covariance spins...
-    increment_covariance_ = R * increment_covariance_ * R.inverse();
+    increment_covariance_in_base_ = R * increment_covariance_ * R.inverse();
 
     // update the pose in the fixed frame
     fixed_to_base_ = fixed_to_base_kf_ * increment_in_base_;
@@ -435,12 +435,8 @@ void LaserOdometryBase::resetCovarianceDefault()
 {
   increment_covariance_ = Covariance::Identity();
 
-  increment_covariance_(0,0) = default_cov_diag_[0];
-  increment_covariance_(1,1) = default_cov_diag_[1];
-  increment_covariance_(2,2) = default_cov_diag_[2];
-  increment_covariance_(3,3) = default_cov_diag_[3];
-  increment_covariance_(4,4) = default_cov_diag_[4];
-  increment_covariance_(5,5) = default_cov_diag_[5];
+  increment_covariance_.diagonal() =
+      Eigen::Map<Eigen::Matrix<Scalar, 6, 1>>(default_cov_diag_.data());
 
   //pose_covariance_ = increment_covariance_;
 }
@@ -530,6 +526,20 @@ void LaserOdometryBase::setOrigin(const Transform& origin)
     ROS_ERROR("setOrigin:, origin's rotation matrix"
               " is not orthogonal.\nSetting Identity instead.");
     fixed_origin_ = Transform::Identity();
+  }
+}
+
+void LaserOdometryBase::setOriginCovariance(const Covariance& origin_covariance)
+{
+  if (utils::isCovariance(origin_covariance))
+  {
+    fixed_origin_covariance_ = origin_covariance;
+  }
+  else
+  {
+    ROS_ERROR("setOriginCovariance:, origin's covariance"
+              " is not a covariance matrix.\nSetting Zero instead.");
+    fixed_origin_covariance_ = Covariance::Zero();
   }
 }
 
