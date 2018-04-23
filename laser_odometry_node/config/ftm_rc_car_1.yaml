@@ -1,0 +1,16 @@
+####################################################
+## Default parameters of the laser_odometry node. ##
+####################################################
+
+# Whether or not the sensor is fixed wrt the base_frame.
+fixed_sensor: True
+
+# Throttling messages.
+throttle:     1
+
+# How many tries to retrieve
+# the laser pose on the robot
+tf_try:       5
+
+# The default delta pose covariance diagonal.
+covariance_diag: [1.e-8, 1.e-8, 1.e-8, 1.e-8, 1.e-8, 1.e-8]

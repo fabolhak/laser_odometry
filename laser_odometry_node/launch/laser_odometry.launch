@@ -1,25 +1,60 @@
 <launch>
 
+  <!-- vehicle name -->
+  <arg name="vehicle" default="ftm_rc_car_1" />
+
+  <arg name="laser_frame" default="laser" />
+  <arg name="base_frame" default="ego_rear_axis_middle_ground" />
+  <arg name="fixed_frame" default="odom" />
+  <arg name="laser_odom_frame" default="odom" />
+  <arg name="global_frame" default="map"/>
+
+  <!--  Whether or not to broadcast the estimated odometry on tf. -->
+  <arg name="broadcast_tf" default="true" />
+
+  <!-- Whether or not the retrieve the origin pose from tf. -->
+  <arg name="init_origin" default="true" />
+
+  <!-- Whether to use a nav_msgs/Odometry message or a geometry_msgs/Pose2D message. -->
+  <arg name="publish_odom" default="true" />
+
   <!-- Launch node through valgrind/gdb. -->
   <arg name="debug" default="false"/>
 
-<!--  <arg name="launch_prefix" value="gdb -ex run - -args"     if="$(arg debug)"/>-->
+  <!--  <arg name="launch_prefix" value="gdb -ex run - -args"     if="$(arg debug)"/>-->
   <arg name="launch_prefix" value="valgrind"           if="$(arg debug)"/>
   <arg name="launch_prefix" value=""                   unless="$(arg debug)"/>
 
   <!-- The laser odometry plugin type. -->
-  <arg name="laser_odometry_type"/>
+  <!-- available types:
+      * laser_odometry::LaserOdometryRf2o
+      * laser_odometry::LaserOdometryCsm
+      * laser_odometry::LaserOdometryLibPointMatcher
+      * laser_odometry::LaserOdometryPolar
+  -->
+  <arg name="laser_odometry_type" default=""/>
 
   <!-- A config file for the laser odometry plugin. -->
-  <arg name="node_config_file" default="$(find laser_odometry_node)/config/laser_odometry_node_default.yaml"/>
+  <arg name="node_config_file" default="$(find laser_odometry_node)/config/$(arg vehicle).yaml"/>
   <arg name="plugin_config_file" default="$(find laser_odometry_node)/config/plugin_config_file_empty.yaml"/>
 
   <!-- The input topic. -->
   <arg name="topic_in" default="~topic_in"/>
 
+  <!-- log or screen -->
+  <arg name="output" default="screen" />
+
   <node pkg="laser_odometry_node" type="laser_odometry_node" name="laser_odometry_node"
-        output="screen" launch-prefix="$(arg launch_prefix)">
+        output="$(arg output)" launch-prefix="$(arg launch_prefix)">
     <param name="laser_odometry_type" value="$(arg laser_odometry_type)" />
+    <param name="laser_frame" value="$(arg laser_frame)" />
+    <param name="base_frame" value="$(arg base_frame)" />
+    <param name="fixed_frame" value="$(arg fixed_frame)" />
+    <param name="laser_odom_frame" value="$(arg laser_odom_frame)" />
+    <param name="global_frame" value="$(arg global_frame)"/>
+    <param name="broadcast_tf" value="$(arg broadcast_tf)" />
+    <param name="init_origin" value="$(arg init_origin)" />
+    <param name="publish_odom" value="$(arg publish_odom)" />
     <rosparam file="$(arg node_config_file)" command="load" />
     <rosparam file="$(arg plugin_config_file)" command="load" />
     <remap from="~topic_in" to="$(arg topic_in)" />
