@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_eigen
   tf2_ros
   topic_tools
+  rosbag
 )
 
 catkin_package(

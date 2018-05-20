@@ -41,6 +41,10 @@
   <!-- The input topic. -->
   <arg name="topic_in" default="~topic_in"/>
 
+  <!-- whether to use a bag -->
+  <arg name="use_bag" default="false" />
+  <arg name="bag_file" default="/path/to/file.bag" />
+
   <!-- log or screen -->
   <arg name="output" default="screen" />
 
@@ -55,6 +59,9 @@
     <param name="broadcast_tf" value="$(arg broadcast_tf)" />
     <param name="init_origin" value="$(arg init_origin)" />
     <param name="publish_odom" value="$(arg publish_odom)" />
+    <param name="use_bag" value="$(arg use_bag)"/>
+    <param name="bag_file" value="$(arg bag_file)"/>
+    <param name="input_topic" value="$(arg topic_in)" />
     <rosparam file="$(arg node_config_file)" command="load" />
     <rosparam file="$(arg plugin_config_file)" command="load" />
     <remap from="~topic_in" to="$(arg topic_in)" />

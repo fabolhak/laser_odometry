@@ -62,6 +62,16 @@ public:
   ///
   void process();
 
+  /// @brief Whether to use a bag
+  bool useBag(void)
+  {
+    return use_bag_;
+  }
+
+  /// @brief Read messages from bag file and process them
+  void readFromBag(void);
+
+
 protected:
 
   bool configured_   = false; /*!< @brief Whether the node is configured. */
@@ -70,6 +80,7 @@ protected:
   bool init_origin_  = false; /*!< @brief Whether to initialize the origin from tf. */
   bool new_scan_     = false; /*!< @brief Whether a new LaserScan was received. */
   bool new_cloud_    = false; /*!< @brief Whether a new PointCloud2 was received. */
+  bool use_bag_      = false; /*!< @brief Whether to load messages from a bag file. */
 
   /// @brief Whether to publish a nav_msgs::Odometry msg
   /// or a geometry_msgs::Pose2D msg
@@ -81,9 +92,15 @@ protected:
   /// @brief How many tries to retrieve the laser pose
   int tf_try_ = 1;
 
+  /// @brief Input topic name
+  std::string input_topic_;
+
   /// @brief The global frame from which the origin
   /// can base initialized.
   std::string global_frame_;
+
+  /// @brief Bag file path
+  std::string bag_file_;
 
   /// @brief A pointer to the laser_odometry plugin
   LaserOdometryPtr laser_odom_ptr_;

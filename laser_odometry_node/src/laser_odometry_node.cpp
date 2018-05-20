@@ -8,6 +8,10 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_eigen/tf2_eigen.h>
 
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
+#include <boost/foreach.hpp>
+
 namespace sm = sensor_msgs;
 
 namespace {
@@ -64,6 +68,9 @@ void LaserOdometryNode::initialize()
   private_nh_.param("throttle",     throttle_,     throttle_);
   private_nh_.param("tf_try",       tf_try_,       tf_try_);
   private_nh_.param("global_frame", global_frame_, std::string("map"));
+  private_nh_.param("input_topic",  input_topic_,  std::string("/scan"));
+  private_nh_.param("use_bag",      use_bag_,      use_bag_);
+  private_nh_.param("bag_file",     bag_file_,     std::string("wrong_filename.bag"));
 
   if (broadcast_tf_)
   {
@@ -93,10 +100,13 @@ void LaserOdometryNode::initialize()
     ROS_INFO_STREAM("Initializing origin :\n" << tf_origin_to_base.matrix());
   }
 
-  sub_ = private_nh_.subscribe("topic_in", 1,
-                               &LaserOdometryNode::resetListenerWithType, this);
+  if(!use_bag_)
+  {
+    sub_ = private_nh_.subscribe("topic_in", 1,
+                                 &LaserOdometryNode::resetListenerWithType, this);
 
-  ROS_INFO("Subscribed to %s", sub_.getTopic().c_str());
+    ROS_INFO("Subscribed to %s", sub_.getTopic().c_str());
+  }
 
   if (publish_odom_)
   {
@@ -265,6 +275,51 @@ void LaserOdometryNode::sendTransform()
   }
 }
 
+// read data from bag and feed it into the callback function
+void LaserOdometryNode::readFromBag(void)
+{
+  // open bag
+  rosbag::Bag bag;
+  bag.open(bag_file_, rosbag::bagmode::Read);
+
+  // topics to load
+  std::vector<std::string> bag_topics;
+  bag_topics.push_back(input_topic_);
+
+  // create bag view
+  rosbag::View bag_view(bag, rosbag::TopicQuery(bag_topics));
+
+  // loop over all messages
+  BOOST_FOREACH(rosbag::MessageInstance const m, bag_view)
+  {
+
+    if(m.getTopic() == input_topic_ || ("/" + m.getTopic() == input_topic_))
+    {
+
+
+      // load the data
+      if("sensor_msgs/LaserScan" == m.getDataType())
+      {
+       sensor_msgs::LaserScanConstPtr scan = m.instantiate<sensor_msgs::LaserScan>();
+        if (scan != NULL){
+
+          LaserCallback(scan);
+          process();
+        }
+      }else if("sensor_msgs/LaserScan" == m.getDataType()){
+        sensor_msgs::PointCloud2ConstPtr cloud = m.instantiate<sensor_msgs::PointCloud2>();
+        if (cloud != NULL){
+          CloudCallback(cloud);
+          process();
+        }
+      }
+    }
+  }
+
+  // close bag
+  bag.close();
+}
+
 } /* namespace laser_odometry */
 
 int main(int argc, char **argv)
@@ -275,18 +330,26 @@ int main(int argc, char **argv)
 
   ros::Rate rate(40);
 
-  while (ros::ok())
+
+  if(!node.useBag())
   {
-    const auto start = ros::Time::now();
+    while (ros::ok())
+    {
+      const auto start = ros::Time::now();
 
-    ros::spinOnce();
+      ros::spinOnce();
 
-    node.process();
+      node.process();
 
-    ROS_DEBUG_STREAM("Processing took : " << (ros::Time::now() - start));
+      ROS_DEBUG_STREAM("Processing took : " << (ros::Time::now() - start));
 
-    rate.sleep();
+      rate.sleep();
+    }
+  }else{
+    ROS_INFO_STREAM("Read from bag!");
+    node.readFromBag();
   }
+
 
   return EXIT_SUCCESS;
 }
