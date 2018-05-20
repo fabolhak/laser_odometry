@@ -59,12 +59,13 @@ LaserOdometryBase::process(Msg&& msg)
   assertIncrement();
   assertIncrementCovariance();
 
-  posePlusIncrement(processed);
-
-  has_new_kf_ = isKeyFrame(increment_in_base_);
+  has_new_kf_ = isKeyFrame(increment_);
 
   if (has_new_kf_)
   {
+    // add keyframe to odometry
+    posePlusIncrement(processed);
+
     // generate a keyframe
     updateKf(std::forward<Msg>(msg));
 
