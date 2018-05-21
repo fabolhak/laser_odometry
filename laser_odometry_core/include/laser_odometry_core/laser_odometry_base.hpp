@@ -2,7 +2,7 @@
 #define _LASER_ODOMETRY_CORE_LASER_ODOMETRY_BASE_HPP_
 
 // Un-comment for IDE highlights
-//#include <laser_odometry_core/laser_odometry_base.h>
+#include <laser_odometry_core/laser_odometry_base.h>
 
 namespace laser_odometry {
 
