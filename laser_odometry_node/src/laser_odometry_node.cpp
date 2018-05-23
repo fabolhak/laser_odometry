@@ -49,6 +49,7 @@ namespace laser_odometry
 LaserOdometryNode::LaserOdometryNode() :
   private_nh_("~")
 {
+
   initialize();
 }
 
@@ -72,6 +73,11 @@ void LaserOdometryNode::initialize()
   private_nh_.param("use_bag",      use_bag_,      use_bag_);
   private_nh_.param("bag_file",     bag_file_,     std::string("wrong_filename.bag"));
 
+  // sleep some time to let other nodes start up and create the tfs
+  ROS_DEBUG_STREAM("LaserOdometry: Sleeping for 10s and wait for other modules to start up");
+  ros::Duration(10.0).sleep();
+  ROS_DEBUG_STREAM("LaserOdometry: Going on.");
+
   if (broadcast_tf_)
   {
     tf_broadcaster_ptr_ = boost::make_shared<tf2_ros::TransformBroadcaster>();
@@ -87,7 +93,7 @@ void LaserOdometryNode::initialize()
     throw std::runtime_error("Something went wrong.");
   }
 
-  setLaserFromTf(ros::Time::now());
+  setLaserFromTf(ros::Time(0));
 
   if (init_origin_)
   {
