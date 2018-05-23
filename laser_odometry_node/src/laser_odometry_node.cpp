@@ -273,7 +273,7 @@ void LaserOdometryNode::sendTransform()
 
     tf_msg.header.stamp = laser_odom_ptr_->getCurrentTime();
     tf_msg.header.frame_id = laser_odom_ptr_->getFrameOdom();
-    tf_msg.child_frame_id  = laser_odom_ptr_->getFrameBase();
+    tf_msg.child_frame_id  = laser_odom_ptr_->getFrameOdomBase();
 
     ROS_DEBUG_STREAM("Sending tf:\n" << etf.matrix());
 

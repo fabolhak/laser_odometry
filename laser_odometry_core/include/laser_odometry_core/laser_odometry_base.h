@@ -350,6 +350,10 @@ namespace laser_odometry
     /// @return the global odometry frame name.
     const std::string& getFrameOdom()  const noexcept;
 
+    /// @brief the base odometry frame name.
+    /// @return the base odometry frame name.
+    const std::string& getFrameOdomBase()  const noexcept;
+
     /// @brief Set the robot base frame name.
     /// @param[in] frame.
     void setFrameBase(const std::string& frame);
@@ -365,6 +369,10 @@ namespace laser_odometry
     /// @brief Set the global odometry frame name.
     /// @param[in] frame.
     void setFrameOdom(const std::string& frame);
+
+    /// @brief Set the base odometry frame name.
+    /// @param[in] frame.
+    void setFrameOdomBase(const std::string& frame);
 
     /**
      * @brief Get the time stamp of the latest reading evaluated.
@@ -469,6 +477,10 @@ namespace laser_odometry
     /// @brief The global odometry frame name.
     /// This frame name is only used in the published message.
     std::string laser_odom_frame_ = "laser_odom";
+
+    /// @brief The base odometry frame name.
+    /// This frame name is only used in the published message.
+    std::string base_odom_frame_ = "laser_odom_base";
 
     /// @brief Tranform from base_frame to laser_frame
     Transform base_to_laser_ = Transform::Identity();

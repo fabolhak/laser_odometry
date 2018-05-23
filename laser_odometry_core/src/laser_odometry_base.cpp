@@ -35,7 +35,7 @@ void LaserOdometryBase::fillMsg<nav_msgs::OdometryPtr&>(nav_msgs::OdometryPtr& m
 
   msg_ptr->header.stamp    = current_time_;
   msg_ptr->header.frame_id = laser_odom_frame_;
-  msg_ptr->child_frame_id  = base_frame_;
+  msg_ptr->child_frame_id  = base_odom_frame_;
 
   conversion::toRos(fixed_origin_to_base_, msg_ptr->pose.pose);
   conversion::toRos<Covariance>(fixed_origin_to_base_covariance_ + noise_2d_3d_, msg_ptr->pose.covariance);
@@ -116,6 +116,7 @@ bool LaserOdometryBase::configure()
   utils::getParam(private_nh_, "base_frame",       base_frame_,       base_frame_,       true);
   utils::getParam(private_nh_, "fixed_frame",      fixed_frame_,      fixed_frame_,      true);
   utils::getParam(private_nh_, "laser_odom_frame", laser_odom_frame_, laser_odom_frame_, true);
+  utils::getParam(private_nh_, "base_odom_frame",  base_odom_frame_,  base_odom_frame_,  true);
 
   // Default covariance diag :
   std::vector<Scalar> default_covariance;
@@ -690,6 +691,11 @@ const std::string& LaserOdometryBase::getFrameOdom()  const noexcept
   return laser_odom_frame_;
 }
 
+const std::string& LaserOdometryBase::getFrameOdomBase()  const noexcept
+{
+  return base_odom_frame_;
+}
+
 void LaserOdometryBase::setFrameBase(const std::string& frame)
 {
   base_frame_ = frame;
@@ -708,6 +714,11 @@ void LaserOdometryBase::setFrameFixed(const std::string& frame)
 void LaserOdometryBase::setFrameOdom(const std::string& frame)
 {
   laser_odom_frame_ = frame;
+}
+
+void LaserOdometryBase::setFrameOdomBase(const std::string& frame)
+{
+  base_odom_frame_ = frame;
 }
 
 const ros::Time& LaserOdometryBase::getCurrentTime() const noexcept
